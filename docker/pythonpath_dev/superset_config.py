@@ -49,17 +49,11 @@ SQLALCHEMY_DATABASE_URI = (
     f"{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_DB}"
 )
 
-# Use environment variable if set, otherwise construct from components
-# This MUST take precedence over any other configuration
-SQLALCHEMY_EXAMPLES_URI = os.getenv(
-    "SUPERSET__SQLALCHEMY_EXAMPLES_URI",
-    (
-        f"{DATABASE_DIALECT}://"
-        f"{EXAMPLES_USER}:{EXAMPLES_PASSWORD}@"
-        f"{EXAMPLES_HOST}:{EXAMPLES_PORT}/{EXAMPLES_DB}"
-    ),
+SQLALCHEMY_EXAMPLES_URI = (
+    f"{DATABASE_DIALECT}://"
+    f"{EXAMPLES_USER}:{EXAMPLES_PASSWORD}@"
+    f"{EXAMPLES_HOST}:{EXAMPLES_PORT}/{EXAMPLES_DB}"
 )
-
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
@@ -105,8 +99,115 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True, "DATASET_FOLDERS": True}
+FEATURE_FLAGS = {
+    "ALERT_REPORTS": True,
+    # Required for @superset-ui/embedded-sdk iframe embedding
+    "EMBEDDED_SUPERSET": True,
+    # Chart ⋮ menu: Drill to detail / Drill by (requires Guest perms from bootstrap script)
+    "DRILL_TO_DETAIL": True,
+    "DRILL_BY": True,
+    # Chart Download: full CSV/Excel export options
+    "ALLOW_FULL_CSV_EXPORT": True,
+}
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
+
+# Origins allowed to embed Superset dashboards (workflow frontend).
+# Comma-separated list, e.g. http://localhost:4600,https://app.workflowdev.pluto-men.com
+_EMBEDDED_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "EMBEDDED_ALLOWED_ORIGINS",
+        "http://localhost:4600,https://app.workflowdev.pluto-men.com",
+    ).split(",")
+    if origin.strip()
+]
+
+GUEST_TOKEN_JWT_SECRET = os.getenv(
+    "GUEST_TOKEN_JWT_SECRET", "change-me-for-production"
+)
+
+# Talisman sets X-Frame-Options: SAMEORIGIN by default, which blocks cross-origin
+# iframes. Disable it and use CSP frame-ancestors instead.
+# See: https://superset.apache.org/docs/configuration/networking-settings
+TALISMAN_CONFIG = {
+    "content_security_policy": {
+        "base-uri": ["'self'"],
+        "default-src": ["'self'"],
+        "img-src": [
+            "'self'",
+            "blob:",
+            "data:",
+            "https://apachesuperset.gateway.scarf.sh",
+            "https://static.scarf.sh/",
+            "ows.terrestris.de",
+            "https://cdn.document360.io",
+        ],
+        "worker-src": ["'self'", "blob:"],
+        "connect-src": [
+            "'self'",
+            "https://api.mapbox.com",
+            "https://events.mapbox.com",
+            "https://tile.openstreetmap.org",
+            "https://tile.osm.ch",
+        ],
+        "object-src": "'none'",
+        "style-src": [
+            "'self'",
+            "'unsafe-inline'",
+        ],
+        "script-src": ["'self'", "'strict-dynamic'"],
+        "frame-ancestors": ["'self'", *_EMBEDDED_ALLOWED_ORIGINS],
+    },
+    "content_security_policy_nonce_in": ["script-src"],
+    "frame_options": None,
+    "force_https": False,
+    "session_cookie_secure": False,
+}
+TALISMAN_DEV_CONFIG = {
+    "content_security_policy": {
+        "base-uri": ["'self'"],
+        "default-src": ["'self'"],
+        "img-src": [
+            "'self'",
+            "blob:",
+            "data:",
+            "https://apachesuperset.gateway.scarf.sh",
+            "https://static.scarf.sh/",
+            "https://cdn.brandfolder.io",
+            "ows.terrestris.de",
+            "https://cdn.document360.io",
+        ],
+        "worker-src": ["'self'", "blob:"],
+        "connect-src": [
+            "'self'",
+            "https://api.mapbox.com",
+            "https://events.mapbox.com",
+            "https://tile.openstreetmap.org",
+            "https://tile.osm.ch",
+        ],
+        "object-src": "'none'",
+        "style-src": [
+            "'self'",
+            "'unsafe-inline'",
+        ],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "frame-ancestors": ["'self'", *_EMBEDDED_ALLOWED_ORIGINS],
+    },
+    "content_security_policy_nonce_in": ["script-src"],
+    "frame_options": None,
+    "force_https": False,
+    "session_cookie_secure": False,
+}
+
+ENABLE_CORS = True
+CORS_OPTIONS = {
+    "supports_credentials": True,
+    "allow_headers": ["*"],
+    "resources": ["*"],
+    "origins": _EMBEDDED_ALLOWED_ORIGINS,
+}
+GUEST_ROLE_NAME = 'Guest'
+
 WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
 # The base URL for the email report hyperlinks.
 WEBDRIVER_BASEURL_USER_FRIENDLY = (
@@ -138,7 +239,7 @@ try:
     from superset_config_docker import *  # noqa: F403
 
     logger.info(
-        "Loaded your Docker configuration at [%s]", superset_config_docker.__file__
+        f"Loaded your Docker configuration at [{superset_config_docker.__file__}]"
     )
 except ImportError:
     logger.info("Using default Docker config...")

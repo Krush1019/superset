@@ -1,0 +1,64 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+# Driver layer for the production Superset image.
+#
+# The AG Grid embedded "View as table" fix lives in source
+# (superset-frontend/src/embedded/index.tsx). Build the lean image
+# from this branch first, then apply this Dockerfile:
+#
+#   ./scripts/build-prod-image.sh
+#
+# Or manually:
+#   docker build --target lean -t plutomen/superset:6.1.0-embed.1-lean .
+#   docker build -f Dockerfile.prod \
+#     --build-arg BASE_IMAGE=plutomen/superset:6.1.0-embed.1-lean \
+#     -t plutomen/superset:6.1.0-embed.1 .
+
+ARG BASE_IMAGE=plutomen/superset:6.1.0-embed.1-lean
+FROM ${BASE_IMAGE}
+
+USER root
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# Metadata DB + analytics warehouse drivers used by Plutomen.
+# Add/remove packages here for your environment.
+RUN . /app/.venv/bin/activate \
+  && if command -v uv >/dev/null 2>&1; then \
+       uv pip install --no-cache \
+         psycopg2-binary \
+         trino \
+         Authlib \
+         openpyxl \
+         Pillow; \
+     else \
+       pip install --no-cache-dir \
+         psycopg2-binary \
+         trino \
+         Authlib \
+         openpyxl \
+         Pillow; \
+     fi
+
+USER superset
+
+CMD ["/app/docker/entrypoints/run-server.sh"]
