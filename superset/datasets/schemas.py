@@ -433,6 +433,7 @@ class UserSchema(Schema):
 class DatasetDrillInfoSchema(Schema):
     id = fields.Integer()
     columns = fields.List(fields.Nested(DatasetColumnDrillInfoSchema))
+    hidden_columns = fields.List(fields.String())
     table_name = fields.String()
     owners = fields.List(fields.Nested(UserSchema))
     created_by = fields.Nested(UserSchema)
@@ -448,11 +449,21 @@ class DatasetDrillInfoSchema(Schema):
         """
         Clear API response to avoid exposing sensitive information for embedded users,
         and filter columns to only include those with groupby=True for drill operations.
+        Columns stamped with extra.hidden_from_drill are omitted from drill-by options
+        and listed in hidden_columns for drill-to-detail display filtering.
         """
+        hidden_columns = [
+            col.column_name
+            for col in getattr(obj, "columns", [])
+            if getattr(col, "hidden_from_drill", False)
+        ]
+        serialized["hidden_columns"] = hidden_columns
+
         dimensions = {
             col.column_name
             for col in getattr(obj, "columns", [])
             if getattr(col, "groupby", False)
+            and not getattr(col, "hidden_from_drill", False)
         }
         serialized["columns"] = [
             col
@@ -461,5 +472,9 @@ class DatasetDrillInfoSchema(Schema):
         ]
 
         if security_manager.is_guest_user():
-            return {"id": serialized["id"], "columns": serialized["columns"]}
+            return {
+                "id": serialized["id"],
+                "columns": serialized["columns"],
+                "hidden_columns": serialized["hidden_columns"],
+            }
         return serialized

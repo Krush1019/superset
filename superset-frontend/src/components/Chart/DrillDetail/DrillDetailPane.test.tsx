@@ -234,3 +234,38 @@ test('should use verbose_map for column headers when available', async () => {
     screen.queryByRole('columnheader', { name: 'na_sales' }),
   ).not.toBeInTheDocument();
 });
+
+test('should hide columns listed in dataset.hidden_columns', async () => {
+  jest.restoreAllMocks();
+  fetchMock.post(SAMPLES_ENDPOINT, {
+    result: {
+      total_count: 1,
+      data: [
+        {
+          year: 1996,
+          customer_id: 42,
+          na_sales: 11.27,
+        },
+      ],
+      colnames: ['year', 'customer_id', 'na_sales'],
+      coltypes: [0, 0, 0],
+    },
+  });
+
+  await waitForRender({
+    dataset: {
+      ...MOCKED_DATASET,
+      hidden_columns: ['customer_id'],
+    },
+  });
+
+  expect(
+    screen.getByRole('columnheader', { name: 'year' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('columnheader', { name: 'na_sales' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('columnheader', { name: 'customer_id' }),
+  ).not.toBeInTheDocument();
+});

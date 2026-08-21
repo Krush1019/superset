@@ -44,4 +44,5 @@ export type Dataset = {
   drillable_columns?: Column[];
   metrics?: Metric[];
   verbose_map?: Record<string, string>;
+  hidden_columns?: string[];
 };

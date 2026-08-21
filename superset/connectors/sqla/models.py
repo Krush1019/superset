@@ -1065,6 +1065,11 @@ class TableColumn(AuditMixinNullable, ImportExportMixin, CertificationMixin, Mod
         return self.database.make_sqla_column_compatible(time_expr, label)
 
     @property
+    def hidden_from_drill(self) -> bool:
+        """Whether this column should be hidden in drill-by / drill-to-detail UIs."""
+        return bool(self.get_extra_dict().get("hidden_from_drill"))
+
+    @property
     def data(self) -> dict[str, Any]:
         attrs = (
             "advanced_data_type",
@@ -1075,6 +1080,7 @@ class TableColumn(AuditMixinNullable, ImportExportMixin, CertificationMixin, Mod
             "expression",
             "filterable",
             "groupby",
+            "hidden_from_drill",
             "id",
             "uuid",
             "is_certified",

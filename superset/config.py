@@ -2254,6 +2254,9 @@ SSL_CERT_PATH: str | None = None
 # to allow mutating the object with this callback.
 # This can be used to set any properties of the object based on naming
 # conventions and such. You can find examples in the tests.
+# Example: stamp ID/FK columns for drill UIs:
+#   from superset.utils.hidden_from_drill import apply_hidden_from_drill
+#   SQLA_TABLE_MUTATOR = apply_hidden_from_drill
 
 # pylint: disable-next=unnecessary-lambda-assignment
 SQLA_TABLE_MUTATOR = lambda table: table  # noqa: E731

@@ -27,6 +27,8 @@ import sys
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
 
+from superset.utils.hidden_from_drill import apply_hidden_from_drill
+
 logger = logging.getLogger()
 
 DATABASE_DIALECT = os.getenv("DATABASE_DIALECT")
@@ -215,6 +217,10 @@ WEBDRIVER_BASEURL_USER_FRIENDLY = (
 )
 SQLLAB_CTAS_NO_LIMIT = True
 
+# Stamp ID/FK columns as hidden from drill UIs on dataset create / Sync columns.
+# Analysts can uncheck "Hide from drill" on a column; that override is preserved.
+SQLA_TABLE_MUTATOR = apply_hidden_from_drill
+
 log_level_text = os.getenv("SUPERSET_LOG_LEVEL", "INFO")
 LOG_LEVEL = getattr(logging, log_level_text.upper(), logging.INFO)
 
@@ -243,3 +249,6 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+
+HTML_SANITIZATION = False

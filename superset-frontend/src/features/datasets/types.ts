@@ -1,5 +1,5 @@
-import { Currency, type DatasourceType } from '@superset-ui/core';
 import { Owner } from '@superset-ui/chart-controls';
+import { Currency, type DatasourceType } from '@superset-ui/core';
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -37,6 +37,7 @@ export type ColumnObject = {
   certification_details?: string;
   warning_markdown?: string;
   advanced_data_type?: string;
+  hidden_from_drill?: boolean;
 };
 
 type MetricObject = {
@@ -53,6 +54,7 @@ type MetricObject = {
   certified_by?: string;
   certification_details?: string;
   warning_markdown?: string;
+  extra?: string;
 };
 
 export type DatasetObject = {

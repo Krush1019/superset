@@ -34,6 +34,7 @@ export type TableControlsProps = {
   totalCount?: number;
   loading: boolean;
   onReload: () => void;
+  hiddenColumns?: string[];
 };
 
 export default function TableControls({
@@ -42,8 +43,13 @@ export default function TableControls({
   totalCount,
   loading,
   onReload,
+  hiddenColumns,
 }: TableControlsProps) {
   const theme = useTheme();
+  const hiddenColumnSet = useMemo(
+    () => new Set(hiddenColumns || []),
+    [hiddenColumns],
+  );
   const filterMap: Record<string, BinaryQueryObjectFilterClause> = useMemo(
     () =>
       Object.assign(
@@ -69,12 +75,13 @@ export default function TableControls({
   const filterTags = useMemo(
     () =>
       Object.entries(filterMap)
+        .filter(([colName]) => !hiddenColumnSet.has(colName))
         .map(([colName, { val, formattedVal }]) => ({
           colName,
           val: formattedVal ?? val,
         }))
         .sort((a, b) => a.colName.localeCompare(b.colName)),
-    [filterMap],
+    [filterMap, hiddenColumnSet],
   );
 
   return (

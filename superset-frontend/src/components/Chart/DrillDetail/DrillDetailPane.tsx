@@ -129,61 +129,73 @@ export default function DrillDetailPane({
     return resultsPages.get(lastPageIndex.current);
   }, [pageIndex, resultsPages]);
 
+  const hiddenColumns = useMemo(
+    () => new Set(ensureIsArray(dataset?.hidden_columns)),
+    [dataset?.hidden_columns],
+  );
+
   const mappedColumns: ColumnsType<DataType> = useMemo(
     () =>
-      resultsPage?.colNames.map((column, index) => ({
-        key: column,
-        dataIndex: column,
-        title:
-          resultsPage?.colTypes[index] === GenericDataType.Temporal ? (
-            <HeaderWithRadioGroup
-              headerTitle={dataset?.verbose_map?.[column] || column}
-              groupTitle={t('Formatting')}
-              groupOptions={[
-                { label: t('Original value'), value: TimeFormatting.Original },
-                {
-                  label: t('Formatted value'),
-                  value: TimeFormatting.Formatted,
-                },
-              ]}
-              value={
-                timeFormatting[column] === TimeFormatting.Original
-                  ? TimeFormatting.Original
-                  : TimeFormatting.Formatted
-              }
-              onChange={value =>
-                setTimeFormatting(state => ({
-                  ...state,
-                  [column]: parseInt(value, 10) as TimeFormatting,
-                }))
-              }
-            />
-          ) : (
-            dataset?.verbose_map?.[column] || column
-          ),
-        render: value => {
-          if (value === true || value === false) {
-            return <BooleanCell value={value} />;
-          }
-          if (value === null) {
-            return <NullCell />;
-          }
-          if (
-            resultsPage?.colTypes[index] === GenericDataType.Temporal &&
-            timeFormatting[column] !== TimeFormatting.Original &&
-            (typeof value === 'number' || value instanceof Date)
-          ) {
-            return <TimeCell value={value} />;
-          }
-          return String(value);
-        },
-        width: 150,
-      })) || [],
+      resultsPage?.colNames
+        .map((column, index) => ({ column, index }))
+        .filter(({ column }) => !hiddenColumns.has(column))
+        .map(({ column, index }) => ({
+          key: column,
+          dataIndex: column,
+          title:
+            resultsPage?.colTypes[index] === GenericDataType.Temporal ? (
+              <HeaderWithRadioGroup
+                headerTitle={dataset?.verbose_map?.[column] || column}
+                groupTitle={t('Formatting')}
+                groupOptions={[
+                  {
+                    label: t('Original value'),
+                    value: TimeFormatting.Original,
+                  },
+                  {
+                    label: t('Formatted value'),
+                    value: TimeFormatting.Formatted,
+                  },
+                ]}
+                value={
+                  timeFormatting[column] === TimeFormatting.Original
+                    ? TimeFormatting.Original
+                    : TimeFormatting.Formatted
+                }
+                onChange={value =>
+                  setTimeFormatting(state => ({
+                    ...state,
+                    [column]: parseInt(value, 10) as TimeFormatting,
+                  }))
+                }
+              />
+            ) : (
+              dataset?.verbose_map?.[column] || column
+            ),
+          render: (value: unknown) => {
+            if (value === true || value === false) {
+              return <BooleanCell value={value} />;
+            }
+            if (value === null) {
+              return <NullCell />;
+            }
+            if (
+              resultsPage?.colTypes[index] === GenericDataType.Temporal &&
+              timeFormatting[column] !== TimeFormatting.Original &&
+              (typeof value === 'number' || value instanceof Date)
+            ) {
+              return <TimeCell value={value} />;
+            }
+            return String(value);
+          },
+          width: 150,
+        })) || [],
     [
       resultsPage?.colNames,
       resultsPage?.colTypes,
       timeFormatting,
       dataset?.verbose_map,
+      hiddenColumns,
     ],
   );
 
@@ -338,6 +350,7 @@ export default function DrillDetailPane({
           totalCount={resultsPage?.total}
           loading={isLoading}
           onReload={handleReload}
+          hiddenColumns={dataset?.hidden_columns}
         />
       )}
       {tableContent}

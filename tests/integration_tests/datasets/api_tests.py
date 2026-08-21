@@ -3137,6 +3137,53 @@ class TestDatasetApi(SupersetTestCase):
             {"column_name": "category", "verbose_name": "Category Column"},
             {"column_name": "region", "verbose_name": None},
         ]
+        assert result.get("hidden_columns", []) == []
+
+        self.items_to_delete = [dataset]
+
+    def test_get_drill_info_hides_hidden_from_drill_columns(self):
+        """
+        Dataset API: drill_info omits hidden_from_drill columns from drill-by
+        options and returns them in hidden_columns.
+        """
+        self.login(ADMIN_USERNAME)
+        dataset = self.insert_dataset(
+            table_name="test_drill_hidden_dataset",
+            owners=[],
+            columns=[
+                TableColumn(
+                    column_name="category",
+                    type="VARCHAR(255)",
+                    verbose_name="Category Column",
+                    groupby=True,
+                ),
+                TableColumn(
+                    column_name="customer_id",
+                    type="INTEGER",
+                    groupby=True,
+                    extra='{"hidden_from_drill": true}',
+                ),
+                TableColumn(
+                    column_name="order_id",
+                    type="INTEGER",
+                    groupby=False,
+                    extra='{"hidden_from_drill": true}',
+                ),
+            ],
+            fetch_metadata=False,
+        )
+
+        uri = f"api/v1/dataset/{dataset.id}/drill_info/"
+        rv = self.get_assert_metric(uri, "get_drill_info")
+        assert rv.status_code == 200
+
+        data = json.loads(rv.data.decode("utf-8"))
+        result = data["result"]
+
+        assert result["columns"] == [
+            {"column_name": "category", "verbose_name": "Category Column"},
+        ]
+        assert set(result["hidden_columns"]) == {"customer_id", "order_id"}
 
         self.items_to_delete = [dataset]
 
@@ -3271,6 +3318,7 @@ class TestDatasetApi(SupersetTestCase):
                     {"column_name": "category", "verbose_name": "Category Column"},
                     {"column_name": "region", "verbose_name": None},
                 ],
+                "hidden_columns": [],
             }
 
         self.items_to_delete = [dash, chart, dataset]

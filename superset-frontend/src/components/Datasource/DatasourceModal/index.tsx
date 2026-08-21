@@ -71,9 +71,21 @@ const StyledDatasourceModal = styled(Modal)`
   }
 `;
 
-function buildExtraJsonObject(
+export function buildExtraJsonObject(
   item: DatasetObject['metrics'][0] | DatasetObject['columns'][0],
 ) {
+  let existingExtra: Record<string, unknown> = {};
+  if (item?.extra) {
+    try {
+      const parsed = JSON.parse(item.extra);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        existingExtra = parsed;
+      }
+    } catch {
+      existingExtra = {};
+    }
+  }
+
   const certification =
     item?.certified_by || item?.certification_details
       ? {
@@ -81,10 +93,24 @@ function buildExtraJsonObject(
           details: item?.certification_details,
         }
       : undefined;
-  return JSON.stringify({
+
+  const nextExtra: Record<string, unknown> = {
+    ...existingExtra,
     certification,
     warning_markdown: item?.warning_markdown,
-  });
+  };
+
+  if (
+    'hidden_from_drill' in item &&
+    typeof (item as DatasetObject['columns'][0]).hidden_from_drill ===
+      'boolean'
+  ) {
+    nextExtra.hidden_from_drill = (
+      item as DatasetObject['columns'][0]
+    ).hidden_from_drill;
+  }
+
+  return JSON.stringify(nextExtra);
 }
 
 const DatasourceModal: FunctionComponent<DatasourceModalProps> = ({

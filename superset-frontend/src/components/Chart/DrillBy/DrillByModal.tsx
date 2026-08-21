@@ -213,6 +213,7 @@ export default function DrillByModal({
     chartDataResult,
     formData.datasource,
     canDownload,
+    dataset?.hidden_columns,
   );
 
   const [currentFormData, setCurrentFormData] = useState(formData);

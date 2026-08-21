@@ -104,3 +104,24 @@ test('should remove the filters on close', () => {
   userEvent.click(screen.getByLabelText('Close'));
   expect(setFilters).toHaveBeenCalledWith([]);
 });
+
+test('should hide filter chips for hidden columns', () => {
+  setup({
+    filters: [
+      {
+        col: 'platform',
+        op: '==',
+        val: 'GB',
+      },
+      {
+        col: 'customer_id',
+        op: '==',
+        val: 42,
+      },
+    ],
+    hiddenColumns: ['customer_id'],
+  });
+  expect(screen.getByText('platform')).toBeInTheDocument();
+  expect(screen.getByText('GB')).toBeInTheDocument();
+  expect(screen.queryByText('customer_id')).not.toBeInTheDocument();
+});

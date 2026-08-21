@@ -16,21 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import rison from 'rison';
-import { PureComponent, useCallback, type ReactNode } from 'react';
-import { connect, ConnectedProps } from 'react-redux';
-import type { JsonObject } from '@superset-ui/core';
-import { type SupersetTheme } from '@apache-superset/core/theme';
-import type { AnyAction } from 'redux';
-import type { ThunkDispatch } from 'redux-thunk';
-import { Radio } from '@superset-ui/core/components/Radio';
-import {
-  isFeatureEnabled,
-  FeatureFlag,
-  SupersetClient,
-  getClientErrorObject,
-  getExtensionsRegistry,
-} from '@superset-ui/core';
 import { GenericDataType } from '@apache-superset/core/common';
 import { Alert } from '@apache-superset/core/components';
 import {
@@ -38,17 +23,17 @@ import {
   styled,
   themeObject,
   withTheme,
+  type SupersetTheme,
 } from '@apache-superset/core/theme';
 import { t } from '@apache-superset/core/translation';
-import Tabs from '@superset-ui/core/components/Tabs';
-import WarningIconWithTooltip from '@superset-ui/core/components/WarningIconWithTooltip';
-import TableSelector from 'src/components/TableSelector';
-import CheckboxControl from 'src/explore/components/controls/CheckboxControl';
-import TextControl from 'src/explore/components/controls/TextControl';
-import TextAreaControl from 'src/explore/components/controls/TextAreaControl';
-import SpatialControl from 'src/explore/components/controls/SpatialControl';
-import withToasts from 'src/components/MessageToasts/withToasts';
-import CurrencyControl from 'src/explore/components/controls/CurrencyControl';
+import type { JsonObject } from '@superset-ui/core';
+import {
+  FeatureFlag,
+  getClientErrorObject,
+  getExtensionsRegistry,
+  isFeatureEnabled,
+  SupersetClient,
+} from '@superset-ui/core';
 import {
   AsyncSelect,
   Badge,
@@ -63,34 +48,46 @@ import {
   Icons,
   InfoTooltip,
   Input,
+  Label,
   Loading,
   Row,
   Select,
   Tooltip,
   Typography,
-  Label,
 } from '@superset-ui/core/components';
+import { Radio } from '@superset-ui/core/components/Radio';
+import Tabs from '@superset-ui/core/components/Tabs';
+import WarningIconWithTooltip from '@superset-ui/core/components/WarningIconWithTooltip';
+import Mousetrap from 'mousetrap';
+import { PureComponent, useCallback, type ReactNode } from 'react';
+import { connect, ConnectedProps } from 'react-redux';
+import type { AnyAction } from 'redux';
+import type { ThunkDispatch } from 'redux-thunk';
+import rison from 'rison';
 import { FilterableTable } from 'src/components';
+import withToasts from 'src/components/MessageToasts/withToasts';
+import TableSelector from 'src/components/TableSelector';
 import {
   executeQuery,
   formatQuery,
   resetDatabaseState,
 } from 'src/database/actions';
-import Mousetrap from 'mousetrap';
-import { clearDatasetCache } from 'src/utils/cachedSupersetGet';
-import { makeUrl } from 'src/utils/pathUtils';
+import CheckboxControl from 'src/explore/components/controls/CheckboxControl';
+import CurrencyControl from 'src/explore/components/controls/CurrencyControl';
+import SpatialControl from 'src/explore/components/controls/SpatialControl';
+import TextAreaControl from 'src/explore/components/controls/TextAreaControl';
+import TextControl from 'src/explore/components/controls/TextControl';
+import { DatasourceFolder } from 'src/explore/components/DatasourcePanel/types';
 import {
-  OwnerSelectLabel,
-  OWNER_TEXT_LABEL_PROP,
   OWNER_EMAIL_PROP,
   OWNER_OPTION_FILTER_PROPS,
+  OWNER_TEXT_LABEL_PROP,
+  OwnerSelectLabel,
 } from 'src/features/owners/OwnerSelectLabel';
+import { clearDatasetCache } from 'src/utils/cachedSupersetGet';
+import { makeUrl } from 'src/utils/pathUtils';
 import { DatabaseSelector } from '../../../DatabaseSelector';
-import CollectionTable from '../CollectionTable';
-import Fieldset from '../Fieldset';
-import Field from '../Field';
-import { fetchSyncedColumns, updateColumns } from '../../utils';
-import DatasetUsageTab from './components/DatasetUsageTab';
+import FoldersEditor from '../../FoldersEditor';
 import {
   DEFAULT_FOLDERS_COUNT,
   isDefaultFolder,
@@ -100,8 +97,11 @@ import {
   countAllFolders,
   filterFoldersByValidUuids,
 } from '../../FoldersEditor/treeUtils';
-import FoldersEditor from '../../FoldersEditor';
-import { DatasourceFolder } from 'src/explore/components/DatasourcePanel/types';
+import { fetchSyncedColumns, updateColumns } from '../../utils';
+import CollectionTable from '../CollectionTable';
+import Field from '../Field';
+import Fieldset from '../Fieldset';
+import DatasetUsageTab from './components/DatasetUsageTab';
 
 const extensionsRegistry = getExtensionsRegistry();
 
@@ -155,6 +155,9 @@ interface Column {
   certified_by?: string;
   certification_details?: string;
   is_certified?: boolean;
+  extra?: string;
+  hidden_from_drill?: boolean;
+  warning_markdown?: string;
 }
 
 interface Database {
@@ -546,8 +549,16 @@ function ColumnCollectionTable({
               'is_dttm',
               'filterable',
               'groupby',
+              'hidden_from_drill',
             ]
-          : ['column_name', 'type', 'is_dttm', 'filterable', 'groupby']
+          : [
+              'column_name',
+              'type',
+              'is_dttm',
+              'filterable',
+              'groupby',
+              'hidden_from_drill',
+            ]
       }
       sortColumns={
         isFeatureEnabled(FeatureFlag.EnableAdvancedDataTypes)
@@ -558,14 +569,28 @@ function ColumnCollectionTable({
               'is_dttm',
               'filterable',
               'groupby',
+              'hidden_from_drill',
             ]
-          : ['column_name', 'type', 'is_dttm', 'filterable', 'groupby']
+          : [
+              'column_name',
+              'type',
+              'is_dttm',
+              'filterable',
+              'groupby',
+              'hidden_from_drill',
+            ]
       }
       allowDeletes
       allowAddItem={allowAddItem}
       itemGenerator={itemGenerator}
       collection={columns}
-      columnLabelTooltips={columnLabelTooltips}
+      columnLabelTooltips={{
+        ...columnLabelTooltips,
+        hidden_from_drill: t(
+          'Hide this column from Drill to detail and Drill by views. ' +
+            'The column remains available for filters and redirects.',
+        ),
+      }}
       filterTerm={filterTerm}
       filterFields={filterFields}
       stickyHeader
@@ -702,6 +727,7 @@ function ColumnCollectionTable({
               groupby: t('Is dimension'),
               is_dttm: t('Is temporal'),
               filterable: t('Is filterable'),
+              hidden_from_drill: t('Hide from drill'),
             }
           : {
               column_name: t('Column'),
@@ -709,6 +735,7 @@ function ColumnCollectionTable({
               groupby: t('Is dimension'),
               is_dttm: t('Is temporal'),
               filterable: t('Is filterable'),
+              hidden_from_drill: t('Hide from drill'),
             }
       }
       onChange={onColumnsChange}
@@ -746,6 +773,7 @@ function ColumnCollectionTable({
               is_dttm: checkboxGenerator,
               filterable: checkboxGenerator,
               groupby: checkboxGenerator,
+              hidden_from_drill: checkboxGenerator,
             }
           : {
               column_name: (v, onItemChange, _, record) =>
@@ -774,6 +802,7 @@ function ColumnCollectionTable({
               is_dttm: checkboxGenerator,
               filterable: checkboxGenerator,
               groupby: checkboxGenerator,
+              hidden_from_drill: checkboxGenerator,
             }
       }
     />
@@ -944,10 +973,60 @@ class DatasourceEditor extends PureComponent<
         props.datasource.datasource_type === 'table' ||
         props.datasource.type === 'table',
       isEditMode: false,
-      databaseColumns: props.datasource.columns.filter(col => !col.expression),
-      calculatedColumns: props.datasource.columns.filter(
-        col => !!col.expression,
-      ),
+      databaseColumns: props.datasource.columns
+        .filter(col => !col.expression)
+        .map(col => {
+          const {
+            certification: {
+              details = undefined,
+              certified_by: certifiedBy = undefined,
+            } = {},
+            warning_markdown: warningMarkdown,
+            hidden_from_drill: hiddenFromDrillExtra,
+          } = JSON.parse(col.extra || '{}') || {};
+          const hiddenFromDrill =
+            typeof col.hidden_from_drill === 'boolean'
+              ? col.hidden_from_drill
+              : typeof hiddenFromDrillExtra === 'boolean'
+                ? hiddenFromDrillExtra
+                : undefined;
+          return {
+            ...col,
+            certification_details: col.certification_details || details,
+            warning_markdown: col.warning_markdown || warningMarkdown || '',
+            certified_by: col.certified_by || certifiedBy,
+            ...(hiddenFromDrill !== undefined
+              ? { hidden_from_drill: hiddenFromDrill }
+              : {}),
+          };
+        }),
+      calculatedColumns: props.datasource.columns
+        .filter(col => !!col.expression)
+        .map(col => {
+          const {
+            certification: {
+              details = undefined,
+              certified_by: certifiedBy = undefined,
+            } = {},
+            warning_markdown: warningMarkdown,
+            hidden_from_drill: hiddenFromDrillExtra,
+          } = JSON.parse(col.extra || '{}') || {};
+          const hiddenFromDrill =
+            typeof col.hidden_from_drill === 'boolean'
+              ? col.hidden_from_drill
+              : typeof hiddenFromDrillExtra === 'boolean'
+                ? hiddenFromDrillExtra
+                : undefined;
+          return {
+            ...col,
+            certification_details: col.certification_details || details,
+            warning_markdown: col.warning_markdown || warningMarkdown || '',
+            certified_by: col.certified_by || certifiedBy,
+            ...(hiddenFromDrill !== undefined
+              ? { hidden_from_drill: hiddenFromDrill }
+              : {}),
+          };
+        }),
       folders: props.datasource.folders || [],
       folderCount: (() => {
         const savedFolders = props.datasource.folders || [];
