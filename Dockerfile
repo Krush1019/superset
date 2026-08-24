@@ -183,6 +183,7 @@ RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
 COPY pyproject.toml setup.py MANIFEST.in README.md ./
 COPY superset-frontend/package.json superset-frontend/
 COPY scripts/check-env.py scripts/
+COPY scripts/stamp_hidden_from_drill.py scripts/
 
 # keeping for backward compatibility
 COPY --chmod=755 ./docker/entrypoints/run-server.sh /usr/bin/
