@@ -17,26 +17,24 @@
 """
 One-shot stamp of ``extra.hidden_from_drill`` on existing dataset columns.
 
-Run inside the Superset app environment, for example:
+Run inside the Superset app container, for example:
 
-    flask --app "superset.app:create_app()" shell < scripts/stamp_hidden_from_drill.py
-
-or:
-
-    python scripts/stamp_hidden_from_drill.py
+    docker compose exec <superset-app> python scripts/stamp_hidden_from_drill.py
 """
 
 from __future__ import annotations
 
-from superset.app import create_app
-from superset.connectors.sqla.models import SqlaTable
-from superset.extensions import db
-from superset.utils.hidden_from_drill import apply_hidden_from_drill
-
 
 def main() -> None:
+    # Models that use encrypted columns require create_app() before import.
+    from superset.app import create_app
+
     app = create_app()
     with app.app_context():
+        from superset.connectors.sqla.models import SqlaTable
+        from superset.extensions import db
+        from superset.utils.hidden_from_drill import apply_hidden_from_drill
+
         tables = db.session.query(SqlaTable).all()
         stamped = 0
         for table in tables:
