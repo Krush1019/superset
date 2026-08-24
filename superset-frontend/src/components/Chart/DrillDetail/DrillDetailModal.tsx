@@ -125,6 +125,10 @@ export default function DrillDetailModal({
         .ant-modal-body {
           display: flex;
           flex-direction: column;
+          /* Keep body height stable so the drill table can fill remaining space
+             without expanding to content height first. */
+          min-height: 0;
+          overflow: hidden;
         }
       `}
       name={t('Drill to detail: %s', chartName)}

@@ -17,19 +17,19 @@
  * under the License.
  */
 
+import { styled, useTheme } from '@apache-superset/core/theme';
+import { safeHtmlSpan } from '@superset-ui/core';
 import { Table as AntTable } from 'antd';
 import {
-  TablePaginationConfig,
   TableProps as AntTableProps,
+  TablePaginationConfig,
 } from 'antd/es/table';
 import classNames from 'classnames';
+import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { useResizeDetector } from 'react-resize-detector';
-import { useEffect, useRef, useState, useCallback, CSSProperties } from 'react';
 import { VariableSizeGrid as Grid } from 'react-window';
-import { safeHtmlSpan } from '@superset-ui/core';
-import { useTheme, styled } from '@apache-superset/core/theme';
 
-import { TableSize, ETableAction } from './index';
+import { ETableAction, TableSize } from './index';
 
 export interface VirtualTableProps<
   RecordType,
@@ -61,6 +61,11 @@ const StyledTable = styled(AntTable)(
       text-overflow: ellipsis;
     }
 
+    /* Keep header scroll range aligned with the virtual body (scrollbar gutter). */
+    .ant-table-header {
+      overflow: hidden !important;
+    }
+
     .ant-spin-nested-loading .ant-spin .ant-spin-dot {
       width: ${theme.sizeUnit * 12}px;
       height: unset;
@@ -84,8 +89,8 @@ const VirtualTable = <RecordType extends object>(
     allowHTML = false,
   } = props;
   const [tableWidth, setTableWidth] = useState<number>(0);
-  const onResize = useCallback((width: number) => {
-    setTableWidth(width);
+  const onResize = useCallback((width?: number) => {
+    setTableWidth(width ?? 0);
   }, []);
   const { ref } = useResizeDetector({ onResize });
   const theme = useTheme();
@@ -120,7 +125,7 @@ const VirtualTable = <RecordType extends object>(
    * There are cases where a user could set the width of each column and the total width is less than width of
    * the table.  In this case we will stretch the last column to use the extra space
    */
-  if (totalWidth < tableWidth) {
+  if (totalWidth < tableWidth && mergedColumns.length > 0) {
     const lastColumn = mergedColumns[mergedColumns.length - 1];
     lastColumn.width =
       (lastColumn.width as number) + Math.floor(tableWidth - totalWidth);
@@ -132,7 +137,7 @@ const VirtualTable = <RecordType extends object>(
     Object.defineProperty(obj, 'scrollLeft', {
       get: () => {
         if (gridRef.current) {
-          return gridRef.current?.state?.scrollLeft;
+          return gridRef.current?.state?.scrollLeft ?? 0;
         }
         return 0;
       },
@@ -153,7 +158,12 @@ const VirtualTable = <RecordType extends object>(
     });
   };
 
-  useEffect(() => resetVirtualGrid, [tableWidth, columns, size]);
+  // Must invoke resetVirtualGrid on dependency changes. Returning the function
+  // alone would only register it as cleanup and leave the grid on stale widths,
+  // which misaligns headers vs body columns after tableWidth is measured.
+  useEffect(() => {
+    resetVirtualGrid();
+  }, [tableWidth, columns, size]);
 
   /*
    * antd Table has a runtime error when it tries to fire the onChange event triggered from a pageChange
@@ -185,11 +195,14 @@ const VirtualTable = <RecordType extends object>(
 
   const renderVirtualList = (
     rawData: readonly object[],
-    { ref, onScroll }: any,
+    // antd/rc-table CustomizeScrollBody info; keep loose for RefObject assignment
+    { scrollbarSize = 0, ref, onScroll }: any,
   ) => {
     // eslint-disable-next-line no-param-reassign
     ref.current = connectObject;
     const cellSize = size === TableSize.Middle ? MIDDLE : SMALL;
+    const scrollY = height || (scroll?.y as number) || 0;
+
     return (
       <Grid
         ref={gridRef}
@@ -197,9 +210,16 @@ const VirtualTable = <RecordType extends object>(
         columnCount={mergedColumns.length}
         columnWidth={(index: number) => {
           const { width = DEFAULT_COL_WIDTH } = mergedColumns[index];
-          return width as number;
+          const columnWidth = width as number;
+          // rc-table shrinks the last header column by scrollbarSize when a
+          // custom body is used (and adds a scrollbar gutter column). Mirror
+          // that reduction here so body cells stay aligned with headers.
+          if (index === mergedColumns.length - 1 && scrollbarSize > 0) {
+            return Math.max(columnWidth - scrollbarSize, 0);
+          }
+          return columnWidth;
         }}
-        height={height || (scroll!.y as number)}
+        height={scrollY}
         rowCount={rawData.length}
         rowHeight={() => cellSize}
         width={tableWidth}

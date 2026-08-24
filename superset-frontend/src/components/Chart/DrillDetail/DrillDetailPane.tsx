@@ -55,6 +55,9 @@ import { getDrillPayload } from './utils';
 import { ResultsPage } from './types';
 
 const PAGE_SIZE = 50;
+// Used until the modal body has a measured height. Avoids rendering the table
+// at unbounded content height (which causes a visible grow-then-shrink).
+const TABLE_HEIGHT_FALLBACK = 400;
 
 interface DataType {
   [key: string]: any;
@@ -64,10 +67,22 @@ interface DataType {
 // react-resize-detector with conditional rendering
 // https://github.com/maslianok/react-resize-detector/issues/178
 function Resizable({ children }: { children: ReactElement }) {
-  const { ref, height } = useResizeDetector();
+  const { ref, height } = useResizeDetector({
+    handleWidth: false,
+  });
+  const tableHeight =
+    height && height > 0 ? height : TABLE_HEIGHT_FALLBACK;
+
   return (
-    <div ref={ref} css={{ flex: 1 }}>
-      {cloneElement(children, { height })}
+    <div
+      ref={ref}
+      css={css`
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+      `}
+    >
+      {cloneElement(children, { height: tableHeight })}
     </div>
   );
 }
@@ -139,13 +154,18 @@ export default function DrillDetailPane({
       resultsPage?.colNames
         .map((column, index) => ({ column, index }))
         .filter(({ column }) => !hiddenColumns.has(column))
-        .map(({ column, index }) => ({
-          key: column,
-          dataIndex: column,
-          title:
-            resultsPage?.colTypes[index] === GenericDataType.Temporal ? (
+        .map(({ column, index }) => {
+          const isTemporal =
+            resultsPage?.colTypes[index] === GenericDataType.Temporal;
+          const headerLabel = dataset?.verbose_map?.[column] || column;
+
+          return {
+            key: column,
+            dataIndex: column,
+            ellipsis: true,
+            title: isTemporal ? (
               <HeaderWithRadioGroup
-                headerTitle={dataset?.verbose_map?.[column] || column}
+                headerTitle={headerLabel}
                 groupTitle={t('Formatting')}
                 groupOptions={[
                   {
@@ -170,26 +190,28 @@ export default function DrillDetailPane({
                 }
               />
             ) : (
-              dataset?.verbose_map?.[column] || column
+              headerLabel
             ),
-          render: (value: unknown) => {
-            if (value === true || value === false) {
-              return <BooleanCell value={value} />;
-            }
-            if (value === null) {
-              return <NullCell />;
-            }
-            if (
-              resultsPage?.colTypes[index] === GenericDataType.Temporal &&
-              timeFormatting[column] !== TimeFormatting.Original &&
-              (typeof value === 'number' || value instanceof Date)
-            ) {
-              return <TimeCell value={value} />;
-            }
-            return String(value);
-          },
-          width: 150,
-        })) || [],
+            render: (value: unknown) => {
+              if (value === true || value === false) {
+                return <BooleanCell value={value} />;
+              }
+              if (value === null) {
+                return <NullCell />;
+              }
+              if (
+                isTemporal &&
+                timeFormatting[column] !== TimeFormatting.Original &&
+                (typeof value === 'number' || value instanceof Date)
+              ) {
+                return <TimeCell value={value} />;
+              }
+              return String(value);
+            },
+            // Temporal headers include a settings control; give them more room.
+            width: isTemporal ? 200 : 150,
+          };
+        }) || [],
     [
       resultsPage?.colNames,
       resultsPage?.colTypes,
@@ -318,7 +340,10 @@ export default function DrillDetailPane({
     const title = t('No rows were returned for this dataset');
     tableContent = <EmptyState image="document.svg" title={title} />;
   } else {
-    // Render table if at least one page has successfully loaded
+    // Render table if at least one page has successfully loaded.
+    // Do not use `virtualize` here: VirtualTable (antd header + react-window body)
+    // desyncs column headers from cells in the drill modal. PAGE_SIZE is small
+    // enough for the standard table. Avoid experimental `resizable` for the same reason.
     tableContent = (
       <Resizable>
         <Table
@@ -332,8 +357,7 @@ export default function DrillDetailPane({
           onChange={pagination =>
             setPageIndex(pagination.current ? pagination.current - 1 : 0)
           }
-          resizable
-          virtualize
+          sticky
           allowHTML={allowHTML}
         />
       </Resizable>
@@ -341,7 +365,15 @@ export default function DrillDetailPane({
   }
 
   return (
-    <>
+    <div
+      css={css`
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+      `}
+    >
       {!bootstrapping && metadataBarComponent}
       {!bootstrapping && (
         <TableControls
@@ -354,6 +386,6 @@ export default function DrillDetailPane({
         />
       )}
       {tableContent}
-    </>
+    </div>
   );
 }

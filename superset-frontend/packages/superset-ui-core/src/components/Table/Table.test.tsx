@@ -81,3 +81,65 @@ test('renders with default props', async () => {
     expect(screen.getByText(row.dataType)).toBeInTheDocument();
   });
 });
+
+test('renders sticky non-virtual table headers and cells', async () => {
+  const columnsWithWidth: ColumnsType<BasicData> = testColumns.map(column => ({
+    ...column,
+    width: 150,
+  }));
+
+  render(
+    <Table
+      size={TableSize.Small}
+      columns={columnsWithWidth}
+      data={testData}
+      sticky
+      height={400}
+      usePagination={false}
+    />,
+  );
+
+  await waitFor(() =>
+    columnsWithWidth.forEach(column =>
+      expect(
+        screen
+          .getAllByText(column.title as string)
+          .find(el => el.closest('th')),
+      ).toBeInTheDocument(),
+    ),
+  );
+
+  expect(screen.getByText('Number')).toBeInTheDocument();
+  expect(screen.getByText('String')).toBeInTheDocument();
+});
+
+test('renders virtualized table headers and cells', async () => {
+  const virtualColumns: ColumnsType<BasicData> = testColumns.map(column => ({
+    ...column,
+    width: 150,
+  }));
+
+  render(
+    <Table
+      size={TableSize.Small}
+      columns={virtualColumns}
+      data={testData}
+      virtualize
+      height={400}
+      usePagination={false}
+    />,
+  );
+
+  await waitFor(() =>
+    virtualColumns.forEach(column =>
+      expect(
+        screen
+          .getAllByText(column.title as string)
+          .find(el => el.closest('th')),
+      ).toBeInTheDocument(),
+    ),
+  );
+
+  expect(document.querySelector('.virtual-table')).toBeInTheDocument();
+  expect(document.querySelector('.virtual-grid')).toBeInTheDocument();
+});

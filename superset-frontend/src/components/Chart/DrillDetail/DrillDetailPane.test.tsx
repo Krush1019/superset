@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import fetchMock from 'fetch-mock';
 import { QueryFormData, SupersetClient } from '@superset-ui/core';
-import { render, screen, waitFor } from 'spec/helpers/testing-library';
-import { getMockStoreWithNativeFilters } from 'spec/fixtures/mockStore';
+import fetchMock from 'fetch-mock';
 import chartQueries, { sliceId } from 'spec/fixtures/mockChartQueries';
+import { getMockStoreWithNativeFilters } from 'spec/fixtures/mockStore';
+import { render, screen, waitFor } from 'spec/helpers/testing-library';
 import { supersetGetCache } from 'src/utils/cachedSupersetGet';
 import DrillDetailPane from './DrillDetailPane';
 
@@ -136,7 +136,8 @@ test('should render loading indicator', async () => {
 test('should render the table with results', async () => {
   fetchWithData();
   await waitForRender();
-  expect(screen.getByRole('table')).toBeInTheDocument();
+  // Sticky + scroll renders separate header/body tables in antd.
+  expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
   expect(screen.getByText('1996')).toBeInTheDocument();
   expect(screen.getByText('11.27')).toBeInTheDocument();
   expect(screen.getByText('1989')).toBeInTheDocument();
