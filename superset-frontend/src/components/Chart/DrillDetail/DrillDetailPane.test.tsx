@@ -270,3 +270,57 @@ test('should hide columns listed in dataset.hidden_columns', async () => {
     screen.queryByRole('columnheader', { name: 'customer_id' }),
   ).not.toBeInTheDocument();
 });
+
+test('should render HTML cell content when allow_render_html is enabled', async () => {
+  jest.restoreAllMocks();
+  setupDatasetEndpoint();
+  fetchMock.post(SAMPLES_ENDPOINT, {
+    result: {
+      total_count: 1,
+      data: [
+        {
+          name: '<b>Mario</b>',
+        },
+      ],
+      colnames: ['name'],
+      coltypes: [1],
+    },
+  });
+
+  await waitForRender({
+    formData: {
+      ...(chart.form_data as unknown as QueryFormData),
+      allow_render_html: true,
+    },
+  });
+
+  expect(document.querySelector('.safe-html-wrapper')).toBeInTheDocument();
+  expect(screen.getByText('Mario')).toBeInTheDocument();
+});
+
+test('should not render HTML when allow_render_html is disabled', async () => {
+  jest.restoreAllMocks();
+  setupDatasetEndpoint();
+  fetchMock.post(SAMPLES_ENDPOINT, {
+    result: {
+      total_count: 1,
+      data: [
+        {
+          name: '<b>Mario</b>',
+        },
+      ],
+      colnames: ['name'],
+      coltypes: [1],
+    },
+  });
+
+  await waitForRender({
+    formData: {
+      ...(chart.form_data as unknown as QueryFormData),
+      allow_render_html: false,
+    },
+  });
+
+  expect(document.querySelector('.safe-html-wrapper')).not.toBeInTheDocument();
+  expect(screen.getByText('<b>Mario</b>')).toBeInTheDocument();
+});

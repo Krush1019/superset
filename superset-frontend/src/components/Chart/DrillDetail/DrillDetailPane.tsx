@@ -16,6 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import { GenericDataType } from '@apache-superset/core/common';
+import { css, useTheme } from '@apache-superset/core/theme';
+import { t } from '@apache-superset/core/translation';
+import {
+  BinaryQueryObjectFilterClause,
+  DatasourceType,
+  ensureIsArray,
+  JsonObject,
+  QueryFormData,
+  safeHtmlSpan,
+} from '@superset-ui/core';
+import { EmptyState, Loading } from '@superset-ui/core/components';
+import Table, {
+  ColumnsType,
+  TableSize,
+} from '@superset-ui/core/components/Table';
+import BooleanCell from '@superset-ui/core/components/Table/cell-renderers/BooleanCell';
+import NullCell from '@superset-ui/core/components/Table/cell-renderers/NullCell';
+import TimeCell from '@superset-ui/core/components/Table/cell-renderers/TimeCell';
+import HeaderWithRadioGroup from '@superset-ui/core/components/Table/header-renderers/HeaderWithRadioGroup';
 import {
   cloneElement,
   ReactElement,
@@ -26,33 +46,14 @@ import {
   useState,
 } from 'react';
 import { useSelector } from 'react-redux';
-import { t } from '@apache-superset/core/translation';
-import {
-  BinaryQueryObjectFilterClause,
-  DatasourceType,
-  ensureIsArray,
-  JsonObject,
-  QueryFormData,
-} from '@superset-ui/core';
-import { css, useTheme } from '@apache-superset/core/theme';
-import { GenericDataType } from '@apache-superset/core/common';
 import { useResizeDetector } from 'react-resize-detector';
-import BooleanCell from '@superset-ui/core/components/Table/cell-renderers/BooleanCell';
-import NullCell from '@superset-ui/core/components/Table/cell-renderers/NullCell';
-import TimeCell from '@superset-ui/core/components/Table/cell-renderers/TimeCell';
-import { EmptyState, Loading } from '@superset-ui/core/components';
 import { getDatasourceSamples } from 'src/components/Chart/chartAction';
-import Table, {
-  ColumnsType,
-  TableSize,
-} from '@superset-ui/core/components/Table';
 import { RootState } from 'src/dashboard/types';
-import HeaderWithRadioGroup from '@superset-ui/core/components/Table/header-renderers/HeaderWithRadioGroup';
 import { useDatasetMetadataBar } from 'src/features/datasets/metadataBar/useDatasetMetadataBar';
 import { Dataset } from '../types';
 import TableControls from './DrillDetailTableControls';
-import { getDrillPayload } from './utils';
 import { ResultsPage } from './types';
+import { getDrillPayload } from './utils';
 
 const PAGE_SIZE = 50;
 // Used until the modal body has a measured height. Avoids rendering the table
@@ -70,8 +71,7 @@ function Resizable({ children }: { children: ReactElement }) {
   const { ref, height } = useResizeDetector({
     handleWidth: false,
   });
-  const tableHeight =
-    height && height > 0 ? height : TABLE_HEIGHT_FALLBACK;
+  const tableHeight = height && height > 0 ? height : TABLE_HEIGHT_FALLBACK;
 
   return (
     <div
@@ -149,6 +149,8 @@ export default function DrillDetailPane({
     [dataset?.hidden_columns],
   );
 
+  const allowHTML = formData.allow_render_html ?? true;
+
   const mappedColumns: ColumnsType<DataType> = useMemo(
     () =>
       resultsPage?.colNames
@@ -206,6 +208,9 @@ export default function DrillDetailPane({
               ) {
                 return <TimeCell value={value} />;
               }
+              if (typeof value === 'string' && allowHTML) {
+                return safeHtmlSpan(value);
+              }
               return String(value);
             },
             // Temporal headers include a settings control; give them more room.
@@ -218,6 +223,7 @@ export default function DrillDetailPane({
       timeFormatting,
       dataset?.verbose_map,
       hiddenColumns,
+      allowHTML,
     ],
   );
 
@@ -318,8 +324,6 @@ export default function DrillDetailPane({
 
   const bootstrapping = !responseError && !resultsPages.size;
 
-  const allowHTML = formData.allow_render_html ?? true;
-
   let tableContent = null;
   if (responseError) {
     // Render error if page download failed
@@ -358,7 +362,6 @@ export default function DrillDetailPane({
             setPageIndex(pagination.current ? pagination.current - 1 : 0)
           }
           sticky
-          allowHTML={allowHTML}
         />
       </Resizable>
     );
