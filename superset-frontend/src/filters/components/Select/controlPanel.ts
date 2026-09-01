@@ -45,8 +45,22 @@ const config: ControlPanelConfig = {
             name: 'groupby',
             config: {
               ...sharedControls.groupby,
-              label: t('Column'),
+              label: t('Value column'),
               required: true,
+            },
+          },
+        ],
+        [
+          {
+            name: 'labelColumn',
+            config: {
+              ...sharedControls.groupby,
+              label: t('Label column'),
+              description: t(
+                'Optional column to display in the filter dropdown instead of the value column',
+              ),
+              required: false,
+              multi: false,
             },
           },
         ],

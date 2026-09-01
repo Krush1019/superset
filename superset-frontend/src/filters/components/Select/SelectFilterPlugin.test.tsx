@@ -1249,3 +1249,82 @@ test('resets dependent filter to first item when value does not exist in data', 
     );
   });
 });
+
+test('renders labels from labelColumn while preserving values from groupby column', async () => {
+  const setDataMaskMock = jest.fn();
+  const labelColumnProps = {
+    ...selectMultipleProps,
+    formData: {
+      ...selectMultipleProps.formData,
+      groupby: ['user_id'],
+      labelColumn: 'user_name',
+      defaultValue: [101],
+    },
+    filterState: { value: [101] },
+    queriesData: [
+      {
+        rowcount: 2,
+        colnames: ['user_id', 'user_name'],
+        coltypes: [0, 1],
+        data: [
+          { user_id: 101, user_name: 'Alice Smith' },
+          { user_id: 102, user_name: 'Bob Jones' },
+        ],
+        applied_filters: [{ column: 'user_id' }],
+        rejected_filters: [],
+      },
+    ],
+  };
+
+  render(
+    // @ts-expect-error
+    <SelectFilterPlugin
+      // @ts-expect-error
+      {...transformProps(labelColumnProps)}
+      setDataMask={setDataMaskMock}
+      showOverflow={false}
+    />,
+    {
+      useRedux: true,
+      initialState: {
+        nativeFilters: {
+          filters: {
+            'test-filter': {
+              name: 'Test Filter',
+            },
+          },
+        },
+        dataMask: {
+          'test-filter': {
+            extraFormData: {
+              filters: [{ col: 'user_id', op: 'IN', val: [101] }],
+            },
+            filterState: {
+              value: [101],
+              label: 'Alice Smith',
+            },
+          },
+        },
+      },
+    },
+  );
+
+  await waitFor(() => {
+    expect(setDataMaskMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filterState: expect.objectContaining({
+          value: [101],
+          label: 'Alice Smith',
+        }),
+        extraFormData: expect.objectContaining({
+          filters: expect.arrayContaining([
+            expect.objectContaining({
+              col: 'user_id',
+              val: [101],
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+});

@@ -32,14 +32,24 @@ const buildQuery: BuildQuery<PluginFilterSelectQueryFormData> = (
   options,
 ) => {
   const { search, coltypeMap } = options?.ownState || {};
-  const { sortAscending, sortMetric } = { ...DEFAULT_FORM_DATA, ...formData };
+  const { sortAscending, sortMetric, labelColumn } = {
+    ...DEFAULT_FORM_DATA,
+    ...formData,
+  };
   return buildQueryContext(formData, baseQueryObject => {
     const { columns = [], filters = [] } = baseQueryObject;
+    const queryColumns = [...columns];
+    if (labelColumn && !queryColumns.includes(labelColumn)) {
+      queryColumns.push(labelColumn);
+    }
     const extraFilters: QueryObjectFilterClause[] = [];
     if (search) {
-      columns.filter(isPhysicalColumn).forEach(column => {
+      const searchColumns = labelColumn ? [labelColumn] : columns;
+      searchColumns.filter(isPhysicalColumn).forEach(column => {
         const label = getColumnLabel(column);
         if (
+          !coltypeMap ||
+          coltypeMap[label] === undefined ||
           coltypeMap[label] === GenericDataType.String ||
           (coltypeMap[label] === GenericDataType.Numeric &&
             !Number.isNaN(Number(search)))
@@ -53,11 +63,15 @@ const buildQuery: BuildQuery<PluginFilterSelectQueryFormData> = (
       });
     }
 
-    const sortColumns = sortMetric ? [sortMetric] : columns;
+    const sortColumns = sortMetric
+      ? [sortMetric]
+      : labelColumn
+        ? [labelColumn]
+        : queryColumns;
     const query: QueryObject[] = [
       {
         ...baseQueryObject,
-        columns,
+        columns: queryColumns,
         metrics: sortMetric ? [sortMetric] : [],
         filters: filters.concat(extraFilters),
         orderby:

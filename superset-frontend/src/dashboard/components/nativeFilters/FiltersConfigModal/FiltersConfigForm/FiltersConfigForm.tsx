@@ -138,6 +138,16 @@ const StyledRowContainer = styled(Flex)`
   padding: ${({ theme }) => theme.sizeUnit * 4}px;
 `;
 
+const StyledColumnStack = styled(Flex)<{ expanded: boolean }>`
+  flex-direction: column;
+  width: ${({ expanded }) => (expanded ? '49%' : `${FORM_ITEM_WIDTH}px`)};
+  gap: ${({ theme }) => theme.sizeUnit * 3}px;
+`;
+
+const StyledStackFormItem = styled(FormItem)`
+  width: 100%;
+`;
+
 type ControlKey = keyof PluginFilterSelectCustomizeProps;
 
 const controlsOrder: ControlKey[] = [
@@ -951,6 +961,10 @@ const FiltersConfigForm = (
                             filterType: value,
                             defaultDataMask: null,
                             column: null,
+                            controlValues: {
+                              ...formFilter?.controlValues,
+                              labelColumn: null,
+                            },
                           });
                           forceUpdate();
                           formChanged();
@@ -968,66 +982,71 @@ const FiltersConfigForm = (
                 )}
                 {hasDataset && (
                   <StyledRowContainer justify="space-between">
-                    {showDataset ? (
-                      <StyledFormItem
-                        expanded={expanded}
-                        name={['filters', filterId, 'dataset']}
-                        label={<StyledLabel>{t('Dataset')}</StyledLabel>}
-                        initialValue={
-                          datasetDetails
-                            ? {
-                                label: DatasetSelectLabel({
-                                  id: datasetDetails.id,
-                                  table_name: datasetDetails.table_name,
-                                  schema: datasetDetails.schema,
-                                  database: {
-                                    database_name:
-                                      datasetDetails.database.database_name,
+                    <StyledColumnStack expanded={expanded} vertical>
+                      {showDataset ? (
+                        <StyledStackFormItem
+                          name={['filters', filterId, 'dataset']}
+                          label={<StyledLabel>{t('Dataset')}</StyledLabel>}
+                          initialValue={
+                            datasetDetails
+                              ? {
+                                  label: DatasetSelectLabel({
+                                    id: datasetDetails.id,
+                                    table_name: datasetDetails.table_name,
+                                    schema: datasetDetails.schema,
+                                    database: {
+                                      database_name:
+                                        datasetDetails.database.database_name,
+                                    },
+                                  }),
+                                  value: datasetDetails.id,
+                                }
+                              : undefined
+                          }
+                          rules={[
+                            {
+                              required: !isRemoved,
+                              message: t('Dataset is required'),
+                            },
+                          ]}
+                          {...getFiltersConfigModalTestId('datasource-input')}
+                        >
+                          <DatasetSelect
+                            onChange={(value: {
+                              label: string | React.ReactNode;
+                              value: number;
+                            }) => {
+                              if (value.value !== datasetId) {
+                                setNativeFilterFieldValues(form, filterId, {
+                                  dataset: value,
+                                  datasetInfo: value,
+                                  defaultDataMask: null,
+                                  column: null,
+                                  controlValues: {
+                                    ...formFilter?.controlValues,
+                                    labelColumn: null,
                                   },
-                                }),
-                                value: datasetDetails.id,
+                                });
                               }
-                            : undefined
-                        }
-                        rules={[
-                          {
-                            required: !isRemoved,
-                            message: t('Dataset is required'),
-                          },
-                        ]}
-                        {...getFiltersConfigModalTestId('datasource-input')}
-                      >
-                        <DatasetSelect
-                          onChange={(value: {
-                            label: string | React.ReactNode;
-                            value: number;
-                          }) => {
-                            if (value.value !== datasetId) {
-                              setNativeFilterFieldValues(form, filterId, {
-                                dataset: value,
-                                datasetInfo: value,
-                                defaultDataMask: null,
-                                column: null,
-                              });
-                            }
-                            forceUpdate();
-                            formChanged();
-                          }}
-                        />
-                      </StyledFormItem>
-                    ) : (
-                      <StyledFormItem
-                        expanded={expanded}
-                        label={<StyledLabel>{t('Dataset')}</StyledLabel>}
-                      >
-                        <Loading position="inline-centered" />
-                      </StyledFormItem>
-                    )}
+                              forceUpdate();
+                              formChanged();
+                            }}
+                          />
+                        </StyledStackFormItem>
+                      ) : (
+                        <StyledStackFormItem
+                          label={<StyledLabel>{t('Dataset')}</StyledLabel>}
+                        >
+                          <Loading position="inline-centered" />
+                        </StyledStackFormItem>
+                      )}
+                      {hasDataset &&
+                        !isChartCustomization &&
+                        mainControlItems.labelColumn?.element}
+                    </StyledColumnStack>
                     {hasDataset &&
                       !isChartCustomization &&
-                      Object.keys(mainControlItems).map(
-                        key => mainControlItems[key].element,
-                      )}
+                      mainControlItems.groupby?.element}
                   </StyledRowContainer>
                 )}
                 <Collapse

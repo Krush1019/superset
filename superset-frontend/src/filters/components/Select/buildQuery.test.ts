@@ -126,4 +126,49 @@ describe('Select buildQuery', () => {
       { col: 'my_col', op: 'ILIKE', val: '%123%' },
     ]);
   });
+
+  test('should include labelColumn in query columns when specified', () => {
+    const queryContext = buildQuery({
+      ...formData,
+      labelColumn: 'user_name',
+    });
+    expect(queryContext.queries.length).toEqual(1);
+    const [query] = queryContext.queries;
+    expect(query.columns).toEqual(['my_col', 'user_name']);
+  });
+
+  test('should sort by labelColumn when labelColumn is specified without sortMetric', () => {
+    const queryContext = buildQuery({
+      ...formData,
+      labelColumn: 'user_name',
+      sortAscending: true,
+    });
+    expect(queryContext.queries.length).toEqual(1);
+    const [query] = queryContext.queries;
+    expect(query.columns).toEqual(['my_col', 'user_name']);
+    expect(query.orderby).toEqual([['user_name', true]]);
+  });
+
+  test('should apply text search filter to labelColumn when labelColumn is specified', () => {
+    const queryContext = buildQuery(
+      {
+        ...formData,
+        labelColumn: 'user_name',
+      },
+      {
+        ownState: {
+          search: 'alice',
+          coltypeMap: {
+            my_col: GenericDataType.Numeric,
+            user_name: GenericDataType.String,
+          },
+        },
+      },
+    );
+    expect(queryContext.queries.length).toEqual(1);
+    const [query] = queryContext.queries;
+    expect(query.filters).toEqual([
+      { col: 'user_name', op: 'ILIKE', val: '%alice%' },
+    ]);
+  });
 });

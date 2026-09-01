@@ -142,6 +142,7 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
     inverseSelection,
     defaultToFirstItem,
     searchAllOptions,
+    labelColumn,
   } = formData;
 
   const groupby = useMemo(
@@ -169,6 +170,19 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
       ? true
       : filterState?.excludeFilterValues,
   );
+
+  const valueToLabelMap = useMemo(() => {
+    const map = new Map<any, string>();
+    data.forEach(row => {
+      const value = row[col];
+      const label =
+        labelColumn && row[labelColumn] !== undefined
+          ? String(row[labelColumn])
+          : labelFormatter(value, datatype);
+      map.set(value, label);
+    });
+    return map;
+  }, [data, datatype, col, labelColumn, labelFormatter]);
 
   const prevExcludeFilterValues = useRef(excludeFilterValues);
 
@@ -212,7 +226,11 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
           ...filterState,
           label: values?.length
             ? `${(values || [])
-                .map(value => labelFormatter(value, datatype))
+                .map(
+                  value =>
+                    valueToLabelMap.get(value) ??
+                    labelFormatter(value, datatype),
+                )
                 .join(', ')}${suffix}`
             : undefined,
           value:
@@ -235,6 +253,7 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
       excludeFilterValues,
       JSON.stringify(filterState),
       labelFormatter,
+      valueToLabelMap,
     ],
   );
 
@@ -293,13 +312,26 @@ export default function PluginFilterSelect(props: PluginFilterSelectProps) {
   }, [filterState.validateMessage, filterState.validateStatus]);
 
   const uniqueOptions = useMemo(() => {
-    const allOptions = new Set(data.map(el => el[col]));
-    return [...allOptions].map((value: string) => ({
-      label: labelFormatter(value, datatype),
-      value,
-      isNewOption: false,
-    }));
-  }, [data, datatype, col, labelFormatter]);
+    const optionMap = new Map<
+      any,
+      { label: string; value: any; isNewOption: boolean }
+    >();
+    data.forEach(row => {
+      const value = row[col];
+      const label =
+        labelColumn && row[labelColumn] !== undefined
+          ? String(row[labelColumn])
+          : labelFormatter(value, datatype);
+      if (!optionMap.has(value)) {
+        optionMap.set(value, {
+          label,
+          value,
+          isNewOption: false,
+        });
+      }
+    });
+    return Array.from(optionMap.values());
+  }, [data, datatype, col, labelColumn, labelFormatter]);
 
   const options = useMemo(() => {
     if (search && !multiSelect && !hasOption(search, uniqueOptions, true)) {

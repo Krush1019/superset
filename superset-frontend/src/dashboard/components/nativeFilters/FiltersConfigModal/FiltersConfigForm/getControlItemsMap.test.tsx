@@ -214,7 +214,7 @@ describe('ColumnSelect filterValues behavior', () => {
     (getControlItems as jest.Mock).mockReturnValue([
       {
         name: 'groupby',
-        config: { label: 'Column', multiple: false, required: false },
+        config: { label: 'Value column', multiple: false, required: false },
       },
     ]);
   });
@@ -247,5 +247,31 @@ describe('ColumnSelect filterValues behavior', () => {
     expect(screen.queryByText('col1')).not.toBeInTheDocument();
     expect(screen.queryByText('col3')).not.toBeInTheDocument();
     expect(screen.queryByText('col2')).not.toBeInTheDocument();
+  });
+
+  test('renders labelColumn control item when configured in controlItems', () => {
+    (getControlItems as jest.Mock).mockReturnValue([
+      {
+        name: 'groupby',
+        config: { label: 'Value column', multiple: false, required: true },
+      },
+      {
+        name: 'labelColumn',
+        config: { label: 'Label column', multiple: false, required: false },
+      },
+    ]);
+    (doesColumnMatchFilterType as jest.Mock).mockReturnValue(true);
+    const props = {
+      ...createProps(),
+      formFilter: { filterType: 'filter_select' },
+    };
+    // @ts-expect-error: bypass incomplete formFilter type for test
+    const controlMap = getControlItemsMap(props);
+    expect(controlMap.mainControlItems.groupby).toBeDefined();
+    expect(controlMap.mainControlItems.labelColumn).toBeDefined();
+    const element = controlMap.mainControlItems.labelColumn
+      .element as React.ReactElement;
+    render(element);
+    expect(screen.getByText('Label column')).toBeInTheDocument();
   });
 });

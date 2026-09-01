@@ -34,7 +34,7 @@ interface ColumnSelectProps {
   allowClear?: boolean;
   filterValues?: (column: Column) => boolean;
   form: FormInstance<NativeFiltersForm>;
-  formField?: keyof NativeFiltersFormItem;
+  formField?: string | string[] | (string | number)[];
   filterId: string;
   datasetId?: number;
   value?: string | string[];
@@ -59,8 +59,11 @@ export function ColumnSelect({
   const [loading, setLoading] = useState(false);
   const { addDangerToast } = useToasts();
   const resetColumnField = useCallback(() => {
+    const fieldPath = Array.isArray(formField)
+      ? ['filters', filterId, ...formField]
+      : ['filters', filterId, formField];
     form.setFields([
-      { name: ['filters', filterId, formField], touched: false, value: null },
+      { name: fieldPath, touched: false, value: null },
     ]);
   }, [form, filterId, formField]);
 

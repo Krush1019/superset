@@ -64,6 +64,10 @@ const CleanFormItem = styled(FormItem)`
   margin-bottom: 0;
 `;
 
+const LabelColumnFormItem = styled(FormItem)`
+  width: 100%;
+`;
+
 export default function getControlItemsMap({
   expanded,
   datasetId,
@@ -93,16 +97,25 @@ export default function getControlItemsMap({
   controlItems
     .filter(
       (mainControlItem: CustomControlItem) =>
-        mainControlItem?.name === 'groupby',
+        mainControlItem?.name === 'groupby' ||
+        mainControlItem?.name === 'labelColumn',
     )
     .forEach(mainControlItem => {
+      const isLabelColumn = mainControlItem.name === 'labelColumn';
       const initialValue =
         filterToEdit?.controlValues?.[mainControlItem.name] ??
         customizationToEdit?.controlValues?.[mainControlItem.name] ??
         mainControlItem?.config?.default;
-      const initColumn =
-        customizationToEdit?.targets?.[0]?.column?.name ??
-        filterToEdit?.targets?.[0]?.column?.name;
+      const initColumn = isLabelColumn
+        ? (filterToEdit?.controlValues?.labelColumn ??
+          customizationToEdit?.controlValues?.labelColumn)
+        : (customizationToEdit?.targets?.[0]?.column?.name ??
+          filterToEdit?.targets?.[0]?.column?.name);
+      const fieldName = isLabelColumn
+        ? ['filters', filterId, 'controlValues', 'labelColumn']
+        : ['filters', filterId, 'column'];
+
+      const FormItemComponent = isLabelColumn ? LabelColumnFormItem : StyledFormItem;
 
       const element = (
         <>
@@ -114,27 +127,40 @@ export default function getControlItemsMap({
               filterToEdit?.requiredFirst
             }
           />
-          <StyledFormItem
+          <FormItemComponent
             expanded={expanded}
             // don't show the column select unless we have a dataset
-            name={['filters', filterId, 'column']}
+            name={fieldName}
             initialValue={initColumn}
             label={
               <StyledLabel>
-                {mainControlItem.config?.label || t('Column')}
+                {mainControlItem.config?.label ||
+                  (isLabelColumn ? t('Label column') : t('Value column'))}&nbsp;
+                {mainControlItem.config?.description && (
+                  <InfoTooltip
+                    placement="top"
+                    tooltip={mainControlItem.config.description}
+                  />
+                )}
               </StyledLabel>
             }
             rules={[
               {
                 required: mainControlItem.config?.required && !removed, // TODO: need to move ColumnSelect settings to controlPanel for all filters
-                message: t('Column is required'),
+                message: t('Value column is required'),
               },
             ]}
-            data-test="field-input"
+            data-test={isLabelColumn ? 'label-column-input' : 'field-input'}
           >
             <ColumnSelect
+              allowClear={isLabelColumn}
               mode={mainControlItem.config?.multiple && 'multiple'}
               form={form}
+              formField={
+                isLabelColumn
+                  ? ['controlValues', 'labelColumn']
+                  : 'column'
+              }
               filterId={filterId}
               datasetId={datasetId}
               filterValues={column =>
@@ -143,16 +169,28 @@ export default function getControlItemsMap({
                   column,
                 ) && !!column?.filterable
               }
-              onChange={() => {
+              onChange={val => {
                 // We need reset default value when column changed
-                setNativeFilterFieldValues(form, filterId, {
-                  defaultDataMask: null,
-                });
+                if (isLabelColumn) {
+                  const currentControlValues =
+                    form.getFieldValue('filters')?.[filterId]?.controlValues || {};
+                  setNativeFilterFieldValues(form, filterId, {
+                    controlValues: {
+                      ...currentControlValues,
+                      labelColumn: val || null,
+                    },
+                    defaultDataMask: null,
+                  });
+                } else {
+                  setNativeFilterFieldValues(form, filterId, {
+                    defaultDataMask: null,
+                  });
+                }
                 forceUpdate();
                 formChanged();
               }}
             />
-          </StyledFormItem>
+          </FormItemComponent>
         </>
       );
       mapMainControlItems[mainControlItem.name] = {
@@ -165,7 +203,8 @@ export default function getControlItemsMap({
       (controlItem: CustomControlItem) =>
         controlItem?.config?.renderTrigger &&
         controlItem.name !== 'sortAscending' &&
-        controlItem.name !== 'enableSingleValue',
+        controlItem.name !== 'enableSingleValue' &&
+        controlItem.name !== 'labelColumn',
     )
     .forEach(controlItem => {
       const initialValue =
