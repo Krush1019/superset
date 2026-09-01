@@ -43,7 +43,8 @@ export type SharedColumnConfigProp =
   | 'visible'
   | 'customColumnName'
   | 'displayTypeIcon'
-  | 'currencyFormat';
+  | 'currencyFormat'
+  | 'includeInSearch';
 
 const d3NumberFormat: ControlFormItemSpec<'Select'> = {
   allowNewOptions: true,
@@ -180,6 +181,17 @@ const visible: ControlFormItemSpec<'Checkbox'> = {
   defaultValue: true,
   debounceDelay: 200,
 };
+
+const includeInSearch: ControlFormItemSpec<'Checkbox'> = {
+  controlType: 'Checkbox',
+  label: t('Include in search'),
+  description: t(
+    'Whether this column appears in the Search by dropdown for server-side table search',
+  ),
+  defaultValue: true,
+  debounceDelay: 200,
+};
+
 /**
  * All configurable column formatting properties.
  */
@@ -205,6 +217,7 @@ export const SHARED_COLUMN_CONFIG_PROPS = {
   colorPositiveNegative,
   currencyFormat,
   visible,
+  includeInSearch,
 };
 
 export const DEFAULT_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
@@ -249,5 +262,17 @@ export const DEFAULT_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
       'columnWidth',
       { name: 'horizontalAlign', override: { defaultValue: 'left' } },
     ],
+  ],
+};
+
+/** Column config layout for table charts (includes search column toggle). */
+export const TABLE_COLUMN_CONFIG_FORM_LAYOUT: ColumnConfigFormLayout = {
+  ...DEFAULT_CONFIG_FORM_LAYOUT,
+  [GenericDataType.String]: [
+    ...(DEFAULT_CONFIG_FORM_LAYOUT[GenericDataType.String] as Exclude<
+      ColumnConfigFormLayout[GenericDataType.String],
+      { tab: string; children: unknown[] }
+    >),
+    ['includeInSearch'],
   ],
 };

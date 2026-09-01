@@ -682,6 +682,7 @@ export type TableColumnConfig = {
   visible?: boolean;
   customColumnName?: string;
   displayTypeIcon?: boolean;
+  includeInSearch?: boolean;
 };
 
 export interface DataColumnMeta {

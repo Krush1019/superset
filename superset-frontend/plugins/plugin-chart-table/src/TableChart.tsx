@@ -1333,24 +1333,37 @@ export default function TableChart<D extends DataRecord = DataRecord>(
   );
 
   useEffect(() => {
-    const options = (
-      columns as unknown as ColumnWithLooseAccessor &
-        {
-          columnKey: string;
-          columnLabel: string;
-          sortType?: string;
-        }[]
-    )
-      .filter(col => col?.sortType === 'alphanumeric')
+    const options = visibleColumnsMeta
+      .filter(
+        col =>
+          col.dataType === GenericDataType.String &&
+          col.config?.includeInSearch !== false,
+      )
       .map(column => ({
-        value: column.columnKey,
-        label: column.columnLabel,
+        value: column.key,
+        label: column.config?.customColumnName || column.label,
       }));
 
     if (!isEqual(options, searchOptions)) {
       setSearchOptions(options || []);
     }
-  }, [columns, searchOptions]);
+  }, [visibleColumnsMeta, searchOptions]);
+
+  useEffect(() => {
+    if (!serverPagination || !serverPaginationData?.searchColumn) {
+      return;
+    }
+    const isValidSearchColumn = searchOptions.some(
+      option => option.value === serverPaginationData.searchColumn,
+    );
+    if (!isValidSearchColumn && searchOptions.length > 0) {
+      updateTableOwnState(setDataMask, {
+        ...serverPaginationData,
+        searchColumn: searchOptions[0].value,
+        searchText: '',
+      });
+    }
+  }, [searchOptions, serverPagination, serverPaginationData, setDataMask]);
 
   const handleServerPaginationChange = useCallback(
     (pageNumber: number, pageSize: number) => {

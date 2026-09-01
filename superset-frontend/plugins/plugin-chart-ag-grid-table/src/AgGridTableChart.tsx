@@ -101,7 +101,11 @@ export default function TableChart<D extends DataRecord = DataRecord>(
 
   useEffect(() => {
     const options = columns
-      .filter(col => col?.dataType === GenericDataType.String)
+      .filter(
+        col =>
+          col?.dataType === GenericDataType.String &&
+          col.config?.includeInSearch !== false,
+      )
       .map(column => ({
         value: column.key,
         label: column.label,
@@ -110,7 +114,23 @@ export default function TableChart<D extends DataRecord = DataRecord>(
     if (!isEqual(options, searchOptions)) {
       setSearchOptions(options || []);
     }
-  }, [columns]);
+  }, [columns, searchOptions]);
+
+  useEffect(() => {
+    if (!serverPagination || !serverPaginationData?.searchColumn) {
+      return;
+    }
+    const isValidSearchColumn = searchOptions.some(
+      option => option.value === serverPaginationData.searchColumn,
+    );
+    if (!isValidSearchColumn && searchOptions.length > 0) {
+      updateTableOwnState(setDataMask, {
+        ...serverPaginationData,
+        searchColumn: searchOptions[0].value,
+        searchText: '',
+      });
+    }
+  }, [searchOptions, serverPagination, serverPaginationData, setDataMask]);
 
   useEffect(() => {
     if (!serverPagination || !serverPaginationData || !rowCount) return;

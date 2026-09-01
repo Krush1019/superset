@@ -58,6 +58,7 @@ import {
 } from '@superset-ui/core';
 import { GenericDataType } from '@apache-superset/core/common';
 import { isEmpty, last } from 'lodash';
+import { TABLE_COLUMN_CONFIG_FORM_LAYOUT } from '../../../src/explore/components/controls/ColumnConfigControl/constants';
 import { PAGE_SIZE_OPTIONS, SERVER_PAGE_SIZE_OPTIONS } from './consts';
 
 function getQueryMode(controls: ControlStateMapping): QueryMode {
@@ -562,6 +563,7 @@ const config: ControlPanelConfig = {
               width: 400,
               height: 320,
               renderTrigger: true,
+              configFormLayout: TABLE_COLUMN_CONFIG_FORM_LAYOUT,
               shouldMapStateToProps() {
                 return true;
               },
