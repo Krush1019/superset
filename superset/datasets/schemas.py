@@ -434,6 +434,7 @@ class DatasetDrillInfoSchema(Schema):
     id = fields.Integer()
     columns = fields.List(fields.Nested(DatasetColumnDrillInfoSchema))
     hidden_columns = fields.List(fields.String())
+    verbose_map = fields.Dict(fields.Str(), fields.Str())
     table_name = fields.String()
     owners = fields.List(fields.Nested(UserSchema))
     created_by = fields.Nested(UserSchema)
@@ -451,6 +452,8 @@ class DatasetDrillInfoSchema(Schema):
         and filter columns to only include those with groupby=True for drill operations.
         Columns stamped with extra.hidden_from_drill are omitted from drill-by options
         and listed in hidden_columns for drill-to-detail display filtering.
+        verbose_map includes labels for every column that can appear in drill-to-detail,
+        including non-dimension columns that are excluded from drill-by options.
         """
         hidden_columns = [
             col.column_name
@@ -470,11 +473,17 @@ class DatasetDrillInfoSchema(Schema):
             for col in serialized.get("columns", [])
             if col["column_name"] in dimensions
         ]
+        serialized["verbose_map"] = {
+            col.column_name: col.verbose_name or col.column_name
+            for col in getattr(obj, "columns", [])
+            if not getattr(col, "hidden_from_drill", False)
+        }
 
         if security_manager.is_guest_user():
             return {
                 "id": serialized["id"],
                 "columns": serialized["columns"],
                 "hidden_columns": serialized["hidden_columns"],
+                "verbose_map": serialized["verbose_map"],
             }
         return serialized

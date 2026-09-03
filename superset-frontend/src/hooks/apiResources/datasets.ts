@@ -56,8 +56,9 @@ export const createVerboseMap = (dataset?: Dataset): Record<string, string> => {
 };
 
 /**
- * Hook to fetch dataset drill info with extension support and verbose_map
- * Handles both extension and standard API cases internally
+ * Hook to fetch dataset drill info with extension support and verbose_map.
+ * Prefers verbose_map from the API (includes non-dimension column labels)
+ * and fills any remaining keys from columns/metrics.
  */
 export const useDatasetDrillInfo = (
   datasetId: string | number,
@@ -108,7 +109,10 @@ export const useDatasetDrillInfo = (
           }
         }
 
-        const verbose_map = createVerboseMap(result);
+        const verbose_map = {
+          ...createVerboseMap(result),
+          ...(result?.verbose_map ?? {}),
+        };
 
         setResource({
           status: ResourceStatus.Complete,

@@ -50,6 +50,12 @@ def test_dataset_drill_info_schema_filters_hidden_columns() -> None:
                 groupby=False,
                 hidden_from_drill=True,
             ),
+            SimpleNamespace(
+                column_name="view_detail",
+                verbose_name="View Detail",
+                groupby=False,
+                hidden_from_drill=False,
+            ),
         ],
     )
 
@@ -63,6 +69,10 @@ def test_dataset_drill_info_schema_filters_hidden_columns() -> None:
         {"column_name": "category", "verbose_name": "Category"},
     ]
     assert set(result["hidden_columns"]) == {"customer_id", "order_id"}
+    assert result["verbose_map"] == {
+        "category": "Category",
+        "view_detail": "View Detail",
+    }
 
 
 def test_dataset_drill_info_schema_guest_includes_hidden_columns() -> None:
@@ -87,6 +97,12 @@ def test_dataset_drill_info_schema_guest_includes_hidden_columns() -> None:
                 groupby=True,
                 hidden_from_drill=True,
             ),
+            SimpleNamespace(
+                column_name="view_detail",
+                verbose_name="View Detail",
+                groupby=False,
+                hidden_from_drill=False,
+            ),
         ],
     )
 
@@ -100,4 +116,8 @@ def test_dataset_drill_info_schema_guest_includes_hidden_columns() -> None:
         "id": 7,
         "columns": [{"column_name": "category", "verbose_name": "Category"}],
         "hidden_columns": ["customer_id"],
+        "verbose_map": {
+            "category": "Category",
+            "view_detail": "View Detail",
+        },
     }

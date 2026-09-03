@@ -3105,6 +3105,7 @@ class TestDatasetApi(SupersetTestCase):
                 TableColumn(
                     column_name="value",
                     type="VARCHAR(255)",
+                    verbose_name="Value",
                     groupby=False,
                 ),
                 TableColumn(
@@ -3138,6 +3139,12 @@ class TestDatasetApi(SupersetTestCase):
             {"column_name": "region", "verbose_name": None},
         ]
         assert result.get("hidden_columns", []) == []
+        assert result["verbose_map"] == {
+            "category": "Category Column",
+            "region": "region",
+            "value": "Value",
+            "description": "description",
+        }
 
         self.items_to_delete = [dataset]
 
@@ -3184,6 +3191,9 @@ class TestDatasetApi(SupersetTestCase):
             {"column_name": "category", "verbose_name": "Category Column"},
         ]
         assert set(result["hidden_columns"]) == {"customer_id", "order_id"}
+        assert result["verbose_map"] == {
+            "category": "Category Column",
+        }
 
         self.items_to_delete = [dataset]
 
@@ -3319,6 +3329,10 @@ class TestDatasetApi(SupersetTestCase):
                     {"column_name": "region", "verbose_name": None},
                 ],
                 "hidden_columns": [],
+                "verbose_map": {
+                    "category": "Category Column",
+                    "region": "region",
+                },
             }
 
         self.items_to_delete = [dash, chart, dataset]

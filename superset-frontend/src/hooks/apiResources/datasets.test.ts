@@ -254,10 +254,13 @@ test('useDatasetDrillInfo does not clear cache on successful fetch', async () =>
   expect(mockedSupersetGetCacheDelete).not.toHaveBeenCalled();
 });
 
-test('useDatasetDrillInfo creates new verbose_map from columns and metrics', async () => {
+test('useDatasetDrillInfo prefers verbose_map from the API', async () => {
   const mockDataset = {
     id: 123,
-    verbose_map: { old_key: 'Old Value' }, // Existing verbose_map will be replaced
+    verbose_map: {
+      col1: 'Column 1',
+      view_detail: 'View Detail',
+    },
     columns: [{ column_name: 'col1', verbose_name: 'Column 1' }],
     metrics: [{ metric_name: 'metric1', verbose_name: 'Metric 1' }],
   };
@@ -275,13 +278,11 @@ test('useDatasetDrillInfo creates new verbose_map from columns and metrics', asy
   await waitForNextUpdate();
 
   expect(result.current.status).toBe('complete');
-  // Verify verbose_map is created from columns/metrics (existing verbose_map replaced)
   expect(result.current.result?.verbose_map).toEqual({
     col1: 'Column 1',
     metric1: 'Metric 1',
+    view_detail: 'View Detail',
   });
-  // Old key should not be present
-  expect(result.current.result?.verbose_map).not.toHaveProperty('old_key');
 });
 
 test('useDatasetDrillInfo handles NaN datasource ID from malformed string', async () => {
