@@ -716,7 +716,7 @@ describe('plugin-chart-table', () => {
 
         const nullCell = noahRow?.querySelector('td.dt-is-null');
         expect(nullCell).not.toBeNull();
-        expect((nullCell as HTMLElement).style.color).toBe('');
+        expect(nullCell as HTMLElement).toHaveStyle({ color: '' });
         expect(getComputedStyle(nullCell as Element).color).toBe(
           'rgba(0, 0, 0, 0.45)',
         );
@@ -1405,7 +1405,9 @@ describe('plugin-chart-table', () => {
         expect(getComputedStyle(screen.getByTitle('2467063')).color).toBe(
           'rgb(172, 225, 196)',
         );
-        expect((screen.getByTitle('2467') as HTMLElement).style.color).toBe('');
+        expect(screen.getByTitle('2467') as HTMLElement).toHaveStyle({
+          color: '',
+        });
       });
 
       test('display text color using column color formatter for entire row', () => {
